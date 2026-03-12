@@ -1,3 +1,4 @@
+import os
 import asyncio
 import sqlite3
 import random
@@ -19,8 +20,8 @@ from aiogram.client.default import DefaultBotProperties
 from groq import Groq
 
 # ===== КОНФИГУРАЦИЯ =====
-BOT_TOKEN = "8192716659:AAFiny33N44D89sEIgT1etV8JeAi0B6_p14"
-GROQ_API_KEY = "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"
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 ADMIN_ID = 1081321560
 
 # ===== ИНИЦИАЛИЗАЦИЯ =====
@@ -942,7 +943,7 @@ async def admin_back(callback: CallbackQuery):
     builder.add(InlineKeyboardButton(text="� Статистика оплат", callback_data="admin_payments"))
     builder.add(InlineKeyboardButton(text="✏️ Управление ДЗ", callback_data="admin_hw_manage"))
     builder.add(InlineKeyboardButton(text="📢 Умная рассылка", callback_data="admin_smart_newsletter"))
-    builder.add(InlineKeyboardButton(text="�📢 Рассылка", callback_data="admin_newsletter"))
+    builder.add(InlineKeyboardButton(text="�� Рассылка", callback_data="admin_newsletter"))
     builder.adjust(2)
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
 
