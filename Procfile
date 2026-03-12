@@ -1,0 +1,1 @@
+worker: python study_attic.py
