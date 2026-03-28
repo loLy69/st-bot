@@ -1,1 +1,1 @@
-worker: python study_attic.py
+web: python cdo_sgups_bot/main.py
