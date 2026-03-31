@@ -1,6 +1,7 @@
 from aiogram import Router
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters import Command, Text
+from aiogram.filters import Command
+from aiogram import F
 from aiogram.fsm.context import FSMContext
 
 from database.db import get_user_by_telegram_id, create_user, update_user
@@ -33,7 +34,7 @@ async def cmd_start(message: Message, state: FSMContext):
     ])
     await message.answer(format_section('Регистрация', 'Выберите роль:'), reply_markup=keyboard)
 
-@router.callback_query(Text(startswith='role_'))
+@router.callback_query(F.data.startswith('role_'))
 async def choose_role(query: CallbackQuery, state: FSMContext):
     role = query.data.split('_', 1)[1]
     await state.update_data(role=role)
@@ -116,7 +117,7 @@ async def menu(message: Message):
         return await message.answer(format_section('Ожидание', 'Ваша заявка на рассмотрении, ожидайте'))
     await message.answer(format_section('Меню', 'Выберите раздел:'), reply_markup=select_menu_by_role(user.get('role', 'pending')))
 
-@router.callback_query(Text('main_menu'))
+@router.callback_query(F.data == 'main_menu')
 async def callback_main_menu(query: CallbackQuery):
     user = await get_user_by_telegram_id(query.from_user.id)
     if not user or user.get('is_approved', 0) == 0:
