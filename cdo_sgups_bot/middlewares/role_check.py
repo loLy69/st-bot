@@ -1,4 +1,4 @@
-from aiogram.dispatcher.middlewares import BaseMiddleware
+from aiogram import BaseMiddleware
 from aiogram.types import Message, CallbackQuery
 from database.db import get_user_by_telegram_id, create_user, update_user
 
