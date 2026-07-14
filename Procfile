@@ -1,1 +1,0 @@
-web: python cdo_sgups_bot/main.py
