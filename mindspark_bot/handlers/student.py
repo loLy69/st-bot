@@ -8,7 +8,7 @@ from aiogram.types import CallbackQuery, Message
 from config import config
 from database.db import execute, fetchall, fetchone, get_user
 from keyboards.menus import back, buttons
-from states.fsm import PaymentFlow
+from states.fsm import HomeworkSubmissionFlow, PaymentFlow
 
 router = Router(name='student')
 
@@ -172,5 +172,43 @@ async def homework(callback: CallbackQuery, db_user: dict) -> None:
         ORDER BY h.id DESC LIMIT 20""", (db_user['id'],),
     )
     await callback.answer()
-    text = '<b>Домашние задания</b>\n\n' + ('\n\n'.join(f"<b>{html.escape(r['title'])}</b> · {html.escape(r['course_title'])}\n{html.escape(r['description'])}" for r in rows) if rows else 'Новых заданий нет.')
-    await callback.message.answer(text, reply_markup=back())
+    text = '<b>Домашние задания</b>\n\n' + ('\n'.join(f"№{r['id']} <b>{html.escape(r['title'])}</b> · {html.escape(r['course_title'])}" for r in rows) if rows else 'Новых заданий нет.')
+    kb = [[(f"📝 {r['title'][:30]}", f"homework_view:{r['id']}")] for r in rows]
+    kb.append([('← Главное меню', 'menu')])
+    await callback.message.answer(text, reply_markup=buttons(kb))
+
+
+@router.callback_query(F.data.startswith('homework_view:'))
+async def homework_view(callback: CallbackQuery, db_user: dict) -> None:
+    homework_id = int(callback.data.split(':')[1])
+    item = await fetchone("""SELECT h.*,c.title course_title,s.id submission_id,s.grade,s.feedback
+        FROM homework h JOIN courses c ON c.id=h.course_id JOIN enrollments e ON e.course_id=h.course_id
+        LEFT JOIN homework_submissions s ON s.homework_id=h.id AND s.student_id=e.student_id
+        WHERE h.id=? AND e.student_id=? AND e.status='active'""", (homework_id,db_user['id']))
+    await callback.answer()
+    if not item: return await callback.message.answer('Задание недоступно.', reply_markup=back())
+    status = 'Сдано ✅' if item['submission_id'] else 'Не сдано'
+    result = f"\nОценка: {html.escape(item['grade'])}\nКомментарий: {html.escape(item['feedback'])}" if item['grade'] or item['feedback'] else ''
+    await callback.message.answer(
+        f"<b>{html.escape(item['title'])}</b>\nКурс: {html.escape(item['course_title'])}\nСрок: {item['deadline'] or 'не указан'}\n\n{html.escape(item['description'])}\n\n{status}{result}",
+        reply_markup=buttons([[('📤 Сдать работу', f"homework_submit:{homework_id}")], [('← К заданиям', 'homework')]]),
+    )
+
+
+@router.callback_query(F.data.startswith('homework_submit:'))
+async def homework_submit(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.set_state(HomeworkSubmissionFlow.answer)
+    await state.update_data(homework_id=int(callback.data.split(':')[1]))
+    await callback.answer(); await callback.message.answer('Отправьте ответ текстом или одним файлом. /cancel — отмена.')
+
+
+@router.message(HomeworkSubmissionFlow.answer)
+async def homework_answer(message: Message, state: FSMContext, db_user: dict) -> None:
+    data = await state.get_data()
+    answer = (message.text or message.caption or '').strip()[:4000]
+    file_id = message.document.file_id if message.document else (message.photo[-1].file_id if message.photo else '')
+    if not answer and not file_id: return await message.answer('Отправьте текст, документ или фотографию.')
+    await execute("""INSERT INTO homework_submissions(homework_id,student_id,answer,file_id) VALUES(?,?,?,?)
+        ON CONFLICT(homework_id,student_id) DO UPDATE SET answer=excluded.answer,file_id=excluded.file_id,submitted_at=CURRENT_TIMESTAMP""",
+        (data['homework_id'],db_user['id'],answer,file_id))
+    await state.clear(); await message.answer('Работа отправлена преподавателю ✅', reply_markup=back())

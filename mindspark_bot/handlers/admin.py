@@ -25,6 +25,19 @@ async def admin_help(message: Message, db_user: dict) -> None:
     )
 
 
+@router.callback_query(F.data == 'admin_help')
+async def admin_help_callback(callback: CallbackQuery, db_user: dict) -> None:
+    if await deny(callback, db_user): return
+    await callback.answer()
+    await callback.message.answer(
+        '<b>Управление школой</b>\n\n'
+        'Связать родителя: <code>/link_parent ID_родителя ID_ученика</code>\n'
+        'Назначить преподавателя: <code>/assign_teacher ID_курса Telegram_ID</code>\n'
+        'Создать ДЗ: <code>/new_homework ID_курса | Заголовок | Описание | ДД.ММ.ГГГГ</code>',
+        reply_markup=back(),
+    )
+
+
 @router.message(Command('link_parent'))
 async def link_parent(message: Message, db_user: dict) -> None:
     if not is_admin(db_user): return

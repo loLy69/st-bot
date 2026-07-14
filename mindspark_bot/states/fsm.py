@@ -27,3 +27,7 @@ class AdminLesson(StatesGroup):
 
 class AnnouncementFlow(StatesGroup):
     text = State()
+
+
+class HomeworkSubmissionFlow(StatesGroup):
+    answer = State()

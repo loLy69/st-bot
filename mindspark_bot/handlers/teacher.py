@@ -37,5 +37,9 @@ async def students(callback: CallbackQuery, db_user: dict) -> None:
 @router.callback_query(F.data == 'teacher_homework')
 async def homework(callback: CallbackQuery, db_user: dict) -> None:
     if not await allowed(callback, db_user): return
+    rows = await fetchall("""SELECT s.id,u.full_name,h.title,s.answer,s.file_id,s.submitted_at
+        FROM homework_submissions s JOIN homework h ON h.id=s.homework_id JOIN users u ON u.id=s.student_id
+        JOIN courses c ON c.id=h.course_id WHERE c.teacher_id=? ORDER BY s.submitted_at DESC LIMIT 30""", (db_user['id'],))
     await callback.answer()
-    await callback.message.answer('Создание и проверка домашних заданий будет подключено к вашим назначенным курсам администратором.', reply_markup=back())
+    text = '<b>Работы учеников</b>\n\n' + ('\n\n'.join(f"№{r['id']} <b>{html.escape(r['full_name'])}</b>\n{html.escape(r['title'])}: {html.escape(r['answer'] or 'приложен файл')}" for r in rows) if rows else 'Новых работ нет.')
+    await callback.message.answer(text, reply_markup=back())

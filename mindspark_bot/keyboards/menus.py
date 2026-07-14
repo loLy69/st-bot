@@ -29,6 +29,7 @@ def main_menu(role: str, approved: bool = True) -> InlineKeyboardMarkup:
             [('👥 Пользователи', 'admin_users'), ('📚 Курсы', 'admin_courses')],
             [('📅 Занятия', 'admin_lessons'), ('💳 Платежи', 'admin_payments')],
             [('📊 Статистика', 'admin_stats'), ('📢 Рассылка', 'admin_broadcast')],
+            [('🛠 Управление школой', 'admin_help')],
         ],
     }
     rows = menus.get(role, [[('📝 Регистрация', 'register')]])
