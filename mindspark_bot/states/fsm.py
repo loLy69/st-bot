@@ -31,3 +31,7 @@ class AnnouncementFlow(StatesGroup):
 
 class HomeworkSubmissionFlow(StatesGroup):
     answer = State()
+
+
+class GradeSubmissionFlow(StatesGroup):
+    result = State()
