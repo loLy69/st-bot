@@ -108,6 +108,13 @@ CREATE TABLE IF NOT EXISTS announcements (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS sent_notifications (
+    booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    sent_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(booking_id, kind)
+);
+
 CREATE INDEX IF NOT EXISTS idx_lessons_starts_at ON lessons(starts_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_student ON bookings(student_id, status);
 CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id, status);

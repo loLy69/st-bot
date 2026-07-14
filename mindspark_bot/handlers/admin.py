@@ -2,6 +2,7 @@ import html
 from datetime import datetime, timedelta
 
 from aiogram import F, Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -10,6 +11,61 @@ from keyboards.menus import back, buttons
 from states.fsm import AdminCourse, AdminLesson, AnnouncementFlow
 
 router = Router(name='admin')
+
+
+@router.message(Command('admin_help'))
+async def admin_help(message: Message, db_user: dict) -> None:
+    if not is_admin(db_user): return
+    await message.answer(
+        '<b>Служебные команды</b>\n'
+        '/link_parent ID_родителя ID_ученика\n'
+        '/assign_teacher ID_курса Telegram_ID\n'
+        '/new_homework ID_курса | Заголовок | Описание | ДД.ММ.ГГГГ\n\n'
+        'Числовые ID пользователей видны в разделе «Пользователи».'
+    )
+
+
+@router.message(Command('link_parent'))
+async def link_parent(message: Message, db_user: dict) -> None:
+    if not is_admin(db_user): return
+    try:
+        _, parent_id, student_id = message.text.split()
+        parent = await fetchone("SELECT * FROM users WHERE id=? AND role='parent'", (int(parent_id),))
+        student = await fetchone("SELECT * FROM users WHERE id=? AND role='student'", (int(student_id),))
+        if not parent or not student: raise ValueError
+        await execute('INSERT OR IGNORE INTO parent_students(parent_id,student_id) VALUES(?,?)', (parent['id'],student['id']))
+        await message.answer('Родитель и ученик связаны ✅')
+    except (ValueError, IndexError):
+        await message.answer('Формат: /link_parent ID_родителя ID_ученика')
+
+
+@router.message(Command('assign_teacher'))
+async def assign_teacher(message: Message, db_user: dict) -> None:
+    if not is_admin(db_user): return
+    try:
+        _, course_id, telegram_id = message.text.split()
+        teacher = await fetchone("SELECT * FROM users WHERE telegram_id=? AND role='teacher' AND is_approved=1", (int(telegram_id),))
+        course = await fetchone('SELECT * FROM courses WHERE id=?', (int(course_id),))
+        if not teacher or not course: raise ValueError
+        await execute('UPDATE courses SET teacher_id=? WHERE id=?', (teacher['id'],course['id']))
+        await message.answer('Преподаватель назначен ✅')
+    except (ValueError, IndexError):
+        await message.answer('Формат: /assign_teacher ID_курса Telegram_ID')
+
+
+@router.message(Command('new_homework'))
+async def new_homework(message: Message, db_user: dict) -> None:
+    if not is_admin(db_user): return
+    try:
+        payload = message.text.split(maxsplit=1)[1]
+        course_raw, title, description, deadline_raw = [part.strip() for part in payload.split('|', 3)]
+        deadline = datetime.strptime(deadline_raw, '%d.%m.%Y').date().isoformat()
+        course = await fetchone('SELECT * FROM courses WHERE id=?', (int(course_raw),))
+        if not course: raise ValueError
+        await execute('INSERT INTO homework(course_id,teacher_id,title,description,deadline) VALUES(?,?,?,?,?)', (course['id'],course['teacher_id'],title[:100],description[:2000],deadline))
+        await message.answer('Домашнее задание опубликовано ✅')
+    except (ValueError, IndexError):
+        await message.answer('Формат: /new_homework ID_курса | Заголовок | Описание | ДД.ММ.ГГГГ')
 
 
 def is_admin(user: dict) -> bool:

@@ -13,6 +13,7 @@ from database.db import init_db
 from handlers import admin, common, parent, student, teacher
 from middlewares.role_check import RoleCheckMiddleware
 from middlewares.throttling import ThrottlingMiddleware
+from services.notifications import reminder_worker
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
 logger = logging.getLogger(__name__)
@@ -41,11 +42,14 @@ async def main() -> None:
     dp.message.middleware(ThrottlingMiddleware(rate_limit=12, time_window=10))
     dp.include_routers(common.router, student.router, parent.router, teacher.router, admin.router)
     runner = await start_health_server()
+    reminders = asyncio.create_task(reminder_worker(bot))
     try:
         await bot.delete_webhook(drop_pending_updates=False)
         logger.info('MindSpark запущен')
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
+        reminders.cancel()
+        await asyncio.gather(reminders, return_exceptions=True)
         await runner.cleanup()
         await bot.session.close()
 
