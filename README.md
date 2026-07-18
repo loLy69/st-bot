@@ -76,7 +76,7 @@ compose.yaml        # production-запуск
 ## Быстрый запуск через Docker
 
 ```bash
-git clone https://github.com/loLy69/st-bot.git mindspark
+git clone https://github.com/loLy69/mindspark-school-bot.git mindspark
 cd mindspark
 cp mindspark_bot/.env.example .env
 ```
